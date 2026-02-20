@@ -1,24 +1,22 @@
 import dbConnect from "@/lib/dbConnect";
 import UserModel from "@/models/User";
-import { getToken } from "next-auth/jwt";
+import { cookies } from "next/headers";
 
-export async function GET(req: Request) {
+export async function GET() {
   try {
-    // 1️⃣ Connect DB
     await dbConnect();
 
-    // 2️⃣ Auth
-    const token = await getToken({
-      req,
-      secret: process.env.NEXTAUTH_SECRET,
-    });
+    // ✅ Read your custom cookie
+    const cookieStore = await cookies();
+    const userCookie = cookieStore.get("user");
 
-    if (!token?.email) {
+    if (!userCookie) {
       return Response.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // 3️⃣ Fetch user
-    const user = await UserModel.findOne({ email: token.email }).lean();
+    const parsedUser = JSON.parse(userCookie.value);
+
+    const user = await UserModel.findOne({ email: parsedUser.email }).lean();
 
     if (!user) {
       return Response.json({ error: "User not found" }, { status: 404 });
@@ -26,28 +24,14 @@ export async function GET(req: Request) {
 
     const messages = user.messages || [];
 
-    // 4️⃣ Stats (RELIABLE)
-  
-const stats = {
-  total: messages.length,
+    const stats = {
+      total: messages.length,
+      essay: messages.filter((m: any) => m.type === "essay").length,
+      resume: messages.filter((m: any) => m.type === "resume").length,
+      code: messages.filter((m: any) => m.type === "code").length,
+      general: messages.filter((m: any) => m.type === "general").length,
+    };
 
-  essay: messages.filter(
-    (m: any) => m.type === "essay"
-  ).length,
-
-  resume: messages.filter(
-    (m: any) => m.type === "resume"
-  ).length,
-
-  code: messages.filter(
-    (m: any) => m.type === "code"
-  ).length,
-
-  general: messages.filter(
-    (m: any) => m.type === "general"
-  ).length,
-};
-    // 5️⃣ Response
     return Response.json({
       profile: {
         username: user.username,
@@ -55,7 +39,7 @@ const stats = {
         memberSince: user.createdAt,
       },
       stats,
-      history: [...messages].reverse(), // newest first
+      history: [...messages].reverse(),
     });
 
   } catch (error) {

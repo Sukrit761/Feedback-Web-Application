@@ -41,6 +41,10 @@ export default function SignUpForm() {
 
   // ------------------ CHECK USERNAME LIVE ------------------
   useEffect(() => {
+    console.log("Validation Errors:", form.formState.errors);
+  }, [form.formState.errors]);
+
+  useEffect(() => {
     const checkUsername = async () => {
       if (!debouncedUsername) return;
 
@@ -74,14 +78,16 @@ export default function SignUpForm() {
         `/api/sign-up`,
         data
       );
-
+       console.log("API Success:", response.data);
       toast.success(response.data.message);
       router.replace(`/verify/${data.username}`);
 
     } catch (error) {
+      console.error("Signup error:", error)
       const axiosError = error as AxiosError<ApiResponse<null>>;
       toast.error(axiosError.response?.data.message ?? "Sign-up failed");
     }
+    
     setIsSubmitting(false);
   };
 

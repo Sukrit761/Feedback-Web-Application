@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 
-import AuthProvider from "@/context/authProvider";
+// import AuthProvider from "@/context/authProvider";
 import Navbar from "@/components/ui/Navbar";
 import { Toaster } from "sonner";
 
@@ -27,7 +27,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased bg-gray-950 text-white min-h-screen`}
       >
-        <AuthProvider>
+        {/* <AuthProvider> */}
           {/* 🔥 Global Navigation */}
           <Navbar />
 
@@ -38,7 +38,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 
           {/* 🔥 Sonner Global Notification */}
           <Toaster richColors closeButton />
-        </AuthProvider>
+        {/* </AuthProvider> */}
       </body>
     </html>
   );

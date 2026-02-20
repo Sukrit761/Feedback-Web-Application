@@ -38,24 +38,26 @@ export default function SignInForm() {
     },
   });
 
-  const onSubmit = async (data: z.infer<typeof signInSchema>) => {
-    const result = await signIn('credentials', {
-      identifier: data.identifier,
-      password: data.password,
-      callbackUrl: "/message",
-      redirect: true
+const onSubmit = async (data: any) => {
+  try {
+    const res = await fetch("/api/sign-in", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
     });
 
-    if (result?.error) {
-      toast({
-        title: "Login Failed",
-        description: result.error === "CredentialsSignin"
-          ? "Incorrect username or password"
-          : result.error,
-        variant: "destructive"
-      });
+    const result = await res.json();
+
+    if (!res.ok) {
+      alert(result.message);
+      return;
     }
-  };
+
+    router.push("/dashboard");
+  } catch (err) {
+    alert("Login failed");
+  }
+};
 
 
   return (
@@ -75,7 +77,8 @@ export default function SignInForm() {
             initial={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 1 }}
-            className="absolute inset-0 bg-black flex items-center justify-center z-50"
+            className="absolute inset-0 bg-black flex items-center justify-center z-50 pointer-events-none"
+
           >
             <div className="flex flex-col items-center gap-4">
               <motion.div 
@@ -122,35 +125,49 @@ export default function SignInForm() {
 
 
             <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
+           <form
+  onSubmit={async (e) => {
+    e.preventDefault();
 
-                <FormField name="identifier" control={form.control} render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Email or Username</FormLabel>
-                    <Input {...field} placeholder="john_doe"
-                      className="bg-white/10 border-white/30 text-white placeholder-gray-400"/>
-                    <FormMessage />
-                  </FormItem>
-                )}/>
+    const identifier = (e.target as any).identifier.value;
+    const password = (e.target as any).password.value;
 
-                <FormField name="password" control={form.control} render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Password</FormLabel>
-                    <Input type="password" {...field} placeholder="••••••••"
-                      className="bg-white/10 border-white/30 text-white placeholder-gray-400" />
-                    <FormMessage />
-                  </FormItem>
-                )}/>
+    const res = await fetch("/api/sign-in", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ identifier, password }),
+    });
 
-                <Button
-                  type="submit"
-                  className="w-full h-11 text-lg font-medium
-                  bg-gradient-to-r from-red-700 to-orange-500 
-                  hover:scale-[1.04] hover:shadow-[0_0_25px_#c61515]
-                  transition-all duration-300">
-                  Sign In
-                </Button>
-              </form>
+    const result = await res.json();
+
+    if (!res.ok) {
+      alert(result.message);
+      return;
+    }
+
+    alert("Login Success!");
+    router.push("/dashboard");
+  }}
+  className="space-y-5"
+>
+  <input
+    name="identifier"
+    placeholder="Email or Username"
+    className="w-full p-2 bg-black text-white"
+  />
+
+  <input
+    name="password"
+    type="password"
+    placeholder="Password"
+    className="w-full p-2 bg-black text-white"
+  />
+
+  <button type="submit" className="w-full bg-red-600 p-2">
+    Sign In
+  </button>
+</form>
+
             </Form>
 
             <p className="text-gray-300 text-center mt-6 text-sm">

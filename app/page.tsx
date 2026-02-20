@@ -1,7 +1,6 @@
 "use client";
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useSession, signOut } from "next-auth/react";
 import Link from "next/link";
 // Loader Component
 const Loader = () => {
@@ -48,14 +47,28 @@ const Loader = () => {
 };
 
 export default function Home() {
-  const [loading, setLoading] = useState(true);
-  const { data: session, status } = useSession();
-  const user = session?.user
-  useEffect(() => {
-    const timer = setTimeout(() => setLoading(false), 2000);
-    return () => clearTimeout(timer);
-  }, []);
-  const href = status === "authenticated" ? "/dashboard" : "/sign-in";
+ const [loading, setLoading] = useState(true);
+
+useEffect(() => {
+  const timer = setTimeout(() => {
+    setLoading(false);
+  }, 2000);
+
+  return () => clearTimeout(timer);
+}, []);
+
+ 
+const [user, setUser] = useState<any>(null);
+
+useEffect(() => {
+  const storedUser = localStorage.getItem("user");
+  if (storedUser) {
+    setUser(JSON.parse(storedUser));
+  }
+}, []);
+
+const href = user ? "/dashboard" : "/sign-in";
+
 
   return (
     <main className="relative min-h-screen w-full overflow-hidden">
@@ -147,7 +160,7 @@ export default function Home() {
           href={href}
           initial={{ opacity: 0, scale: 0.5, rotate: -10 }}
           animate={{
-            opacity: status === "loading" ? 0 : 1,
+            opacity: loading ? 0 : 1,
             scale: 1,
             rotate: 0,
           }}

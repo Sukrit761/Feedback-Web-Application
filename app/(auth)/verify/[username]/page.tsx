@@ -21,9 +21,14 @@ export default function VerifyAccount() {
 
     const form = useForm<z.infer<typeof verifySchema>>({
         resolver: zodResolver(verifySchema),
+        defaultValues: {
+            code: "",
+        },
     });
 
+
     const onSubmit = async (data: z.infer<typeof verifySchema>) => {
+        console.log("VERIFY SUBMITTED", data);
         setIsSubmitting(true);
 
         try {
@@ -87,11 +92,13 @@ export default function VerifyAccount() {
                         />
 
                         <Button
+                            type="submit"   // 🔥 THIS IS THE FIX
                             disabled={isSubmitting}
                             className="w-full h-11 text-lg bg-blue-600 hover:bg-blue-700 transition rounded-xl"
                         >
                             {isSubmitting ? "Verifying..." : "Verify Account"}
                         </Button>
+
                     </form>
                 </Form>
 

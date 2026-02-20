@@ -1,6 +1,4 @@
 'use client';
-
-
 import { motion } from 'framer-motion';
 import { X, User, FileText, MessageSquare, Code, Calendar, TrendingUp } from 'lucide-react';
 import { useEffect, useState } from "react";
@@ -322,10 +320,15 @@ export default function Dashboard() {
     useEffect(() => {
         const fetchDashboard = async () => {
             try {
-                const res = await fetch("/api/dashboard");
+                const res = await fetch("/api/dashboard", {
+                    credentials: "include",
+                });
+
                 if (!res.ok) throw new Error("Failed to fetch dashboard");
+
                 const data = await res.json();
                 setDashboardData(data);
+
             } catch (error) {
                 console.error(error);
             } finally {

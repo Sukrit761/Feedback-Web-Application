@@ -2,35 +2,33 @@ import { generateText } from "ai";
 import { groq } from "@ai-sdk/groq";
 import dbConnect from "@/lib/dbConnect";
 import UserModel from "@/models/User";
-import { getToken } from "next-auth/jwt";
+import { cookies } from "next/headers";
 
 export async function POST(req: Request) {
   try {
+    /* ================= AUTH ================= */
+    const cookieStore = await cookies();
+    const userCookie = cookieStore.get("user");
+
+    if (!userCookie) {
+      return Response.json({ message: "Unauthorized" }, { status: 401 });
+    }
+
+    const parsedUser = JSON.parse(userCookie.value);
+
     /* ================= CONNECT DB ================= */
     await dbConnect();
 
-    /* ================= AUTH ================= */
-    const token = await getToken({
-      req,
-      secret: process.env.NEXTAUTH_SECRET,
-    });
+    const dbUser = await UserModel.findById(parsedUser.id);
 
-    if (!token || !token.email) {
-      return Response.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const user = await UserModel.findOne({ email: token.email });
-    if (!user) {
-      return Response.json({ error: "User not found" }, { status: 404 });
+    if (!dbUser) {
+      return Response.json({ message: "User not found" }, { status: 404 });
     }
 
     /* ================= INPUT ================= */
     const { type, content } = await req.json();
     const lowerType = type?.toLowerCase() || "general";
 
-    /**
-     * ✅ NORMALIZED TYPE (ONE SOURCE OF TRUTH)
-     */
     const normalizedType =
       lowerType === "essay"
         ? "essay"
@@ -46,88 +44,77 @@ export async function POST(req: Request) {
 
     /* ================= PROMPTS ================= */
 
-    // 📝 ESSAY
     if (normalizedType === "essay") {
       prompt = `
-        You must ONLY reply with valid JSON.
+You must ONLY reply with valid JSON.
 
-        {
-          "summary": "",
-          "strengths": [],
-          "weaknesses": [],
-          "improvements": [],
-          "score": 0
-        }
+{
+  "summary": "",
+  "strengths": [],
+  "weaknesses": [],
+  "improvements": [],
+  "score": 0
+}
 
-        Analyze and improve this essay for structure, clarity, grammar and quality:
+Analyze and improve this essay:
 
-        ${content}
-      `;
-    }
-
-
-    // 💻 CODE
-    else if (normalizedType === "code") {
+${content}
+`;
+    } else if (normalizedType === "code") {
       prompt = `
-        You must ONLY reply with valid JSON.
+You must ONLY reply with valid JSON.
 
-        {
-          "summary": "",
-          "strengths": [],
-          "weaknesses": [],
-          "improvements": [],
-          "correctedCode": "",
-          "timeComplexity": "",
-          "spaceComplexity": "",
-          "score": 0
-        }
+{
+  "summary": "",
+  "strengths": [],
+  "weaknesses": [],
+  "improvements": [],
+  "correctedCode": "",
+  "timeComplexity": "",
+  "spaceComplexity": "",
+  "score": 0
+}
 
-        Review and optimize this code:
+Review this code:
 
-        ${content}
-      `;
-    }
-
-    // 📄 RESUME
-    else if (normalizedType === "resume") {
+${content}
+`;
+    } else if (normalizedType === "resume") {
       prompt = `
-        You must ONLY reply with valid JSON.
+You must ONLY reply with valid JSON.
 
-        {
-          "summary": "",
-          "skillsFound": [],
-          "missingSkills": [],
-          "strengths": [],
-          "weaknesses": [],
-          "atsScore": 0,
-          "formattingIssues": [],
-          "recommendations": [],
-          "score": 0
-        }
+{
+  "summary": "",
+  "skillsFound": [],
+  "missingSkills": [],
+  "strengths": [],
+  "weaknesses": [],
+  "atsScore": 0,
+  "formattingIssues": [],
+  "recommendations": [],
+  "score": 0
+}
 
-        Analyze this resume:
+Analyze this resume:
 
-        ${content}
-      `;
-    }
-
-    // 📌 GENERAL
-    else {
+${content}
+`;
+    } else {
       prompt = `
-        You must ONLY reply with valid JSON.
+You must ONLY reply with valid JSON.
 
-        {
-          "summary": "",
-          "strengths": [],
-          "weaknesses": [],
-          "improvements": [],
-          "score": 0
-        }
+{
+  "summary": "",
+  "strengths": [],
+  "weaknesses": [],
+  "improvements": [],
+  "score": 0
+}
 
-        Analyze this content:
+Analyze this content:
 
-        ${content}
-      `;
+${content}
+`;
     }
 
     /* ================= AI ================= */
@@ -140,7 +127,6 @@ export async function POST(req: Request) {
     const jsonMatch = raw.match(/\{[\s\S]*\}/);
 
     if (!jsonMatch) {
-      console.error("AI Output:", raw);
       return Response.json(
         { error: "AI returned invalid JSON" },
         { status: 500 }
@@ -149,17 +135,18 @@ export async function POST(req: Request) {
 
     const aiData = JSON.parse(jsonMatch[0]);
 
-    /* ================= SAVE ================= */
-    user.messages.push({
+    /* ================= SAVE TO DB ================= */
+    dbUser.messages.push({
       content: content?.trim() || "[Input submitted]",
-      type: normalizedType, // ⭐ ESSAY IS NOW SAVED CORRECTLY
+      type: normalizedType,
       aiResponse: aiData,
       createdAt: new Date(),
     });
 
-    await user.save();
+    await dbUser.save();
 
     return Response.json(aiData);
+
   } catch (error) {
     console.error("AI Route Error:", error);
     return Response.json(
